@@ -1,0 +1,19 @@
+{
+  "name": "title2svg",
+  "version": "1.0.0",
+  "description": "将 Markdown 标题转换为 SVG 流程图",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.4.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "vite": "^5.0.0"
+  },
+  "packageManager": "pnpm@8.0.0"
+}
