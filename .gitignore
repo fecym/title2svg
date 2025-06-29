@@ -10,3 +10,8 @@
 .history
 node_modules
 dist
+
+# # 部署相关文件（不对外展示）
+# DEPLOY.md
+# deploy.sh
+# deploy.bat
