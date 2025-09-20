@@ -56,14 +56,45 @@ export function renderFlowChart(canvas, titleTree) {
     return
   }
 
-  // 计算节点布局
-  const layout = calculateLayout(titleTree, canvas.width, canvas.height)
+  // 计算节点布局 - 使用更大的虚拟画布尺寸
+  const virtualWidth = Math.max(1800, canvas.width * 1.5)
+  const virtualHeight = Math.max(1200, canvas.height * 1.5)
+  const layout = calculateLayout(titleTree, virtualWidth, virtualHeight)
+
+  // 计算内容的实际边界
+  let minX = Infinity, maxX = -Infinity
+  let minY = Infinity, maxY = -Infinity
+
+  layout.forEach(node => {
+    minX = Math.min(minX, node.x)
+    maxX = Math.max(maxX, node.x + node.width)
+    minY = Math.min(minY, node.y)
+    maxY = Math.max(maxY, node.y + node.height)
+  })
+
+  const contentWidth = maxX - minX + 80  // 添加边距
+  const contentHeight = maxY - minY + 80 // 添加边距
+
+  // 计算缩放比例，确保内容完全显示
+  const scaleX = canvas.width / contentWidth
+  const scaleY = canvas.height / contentHeight
+  const scale = Math.min(scaleX, scaleY, 1.0) // 不超过原始大小
+
+  // 应用缩放和居中
+  ctx.save()
+  ctx.scale(scale, scale)
+  ctx.translate(
+    (canvas.width / scale - contentWidth) / 2 - minX + 40,
+    (canvas.height / scale - contentHeight) / 2 - minY + 40
+  )
 
   // 绘制连接线
   drawConnections(ctx, layout)
 
   // 绘制节点
   drawNodes(ctx, layout)
+
+  ctx.restore()
 }
 
 // 计算思维导图布局 - 子级相对父级居中分布
@@ -73,28 +104,29 @@ function calculateLayout(titleTree, canvasWidth, canvasHeight) {
   if (!titleTree || titleTree.length === 0) return layout
 
   // 第一步：计算每个节点及其子树的总高度
+  // 修改 calculateSubtreeHeight 函数中的基础高度
   function calculateSubtreeHeight(node) {
     if (!node.children || node.children.length === 0) {
-      return 50 // 单个节点的基础高度
+      return 40 // 将单个节点的基础高度从 50 减小到 40
     }
-
+  
     let totalHeight = 0
     node.children.forEach(child => {
       totalHeight += calculateSubtreeHeight(child)
     })
-
-    return Math.max(50, totalHeight) // 至少保持自身高度
+  
+    return Math.max(40, totalHeight) // 至少保持自身高度，也从 50 减小到 40
   }
 
      // 第二步：分配位置，子级相对父级居中
    function layoutNode(node, level, startX, centerY, parentInfo = null) {
      const hasBox = level <= 1
      const textWidth = estimateTextWidth(node.text, level)
-     // 增加边距：有框节点左右各15px，无框节点左右各8px
-     const padding = hasBox ? 30 : 16  // 增加padding让节点更舒适
-     const minWidth = level === 0 ? 80 : 50
+     // 减小边距：有框节点左右各边距从 30 减小到 20，无框节点从 16 减小到 12
+     const padding = hasBox ? 20 : 12
+     const minWidth = level === 0 ? 70 : 40 // 减小最小宽度
      const nodeWidth = hasBox ? Math.max(minWidth, textWidth + padding) : textWidth + padding
-     const nodeHeight = hasBox ? 33 : 28
+     const nodeHeight = hasBox ? 30 : 25 // 减小节点高度
 
     // 计算子树总高度
     const subtreeHeight = calculateSubtreeHeight(node)
@@ -121,9 +153,9 @@ function calculateLayout(titleTree, canvasWidth, canvasHeight) {
 
     // 处理子节点
     if (node.children && node.children.length > 0) {
-      const childSpacing = hasBox ? 95 : 118
+      const childSpacing = hasBox ? 70 : 90 // 减小子节点间距，从 95/118 减小到 70/90
       const childStartX = startX + nodeWidth + childSpacing
-
+    
       // 计算子节点的起始Y位置（相对于当前节点居中）
       let totalChildrenHeight = 0
       node.children.forEach(child => {
@@ -348,17 +380,31 @@ export function exportToSVG(titleTree) {
     return '<svg></svg>'
   }
 
-  // 计算布局（使用固定尺寸）
-  const svgWidth = 1200
-  const svgHeight = 800
+  // 计算布局（使用更大的初始尺寸以提高清晰度）
+  const svgWidth = 3000
+  const svgHeight = 2000
   const layout = calculateLayout(titleTree, svgWidth, svgHeight)
 
-  // 计算实际需要的SVG尺寸
+  // 计算实际需要的SVG尺寸（完全自适应内容）
+  const minX = Math.min(...layout.map(node => node.x)) - 40
   const maxX = Math.max(...layout.map(node => node.x + node.width)) + 40
+  const minY = Math.min(...layout.map(node => node.y)) - 40
   const maxY = Math.max(...layout.map(node => node.y + node.height)) + 40
+  
+  // 计算实际内容尺寸
+  const contentWidth = maxX - minX
+  const contentHeight = maxY - minY
 
-    let svg = `<svg width="${maxX}" height="${maxY}" xmlns="http://www.w3.org/2000/svg">
-  <g>`
+  // 使用实际内容尺寸，不进行缩放
+  const finalWidth = contentWidth
+  const finalHeight = contentHeight
+
+  // 创建高清SVG
+  let svg = `<svg width="${finalWidth}" height="${finalHeight}" xmlns="http://www.w3.org/2000/svg" 
+  shape-rendering="geometricPrecision" text-rendering="optimizeLegibility">
+  <g transform="translate(${-minX}, ${-minY})">` // 平移到可见区域
+
+  // ... 其他代码保持不变 ...
 
              // 添加弯曲连接线 - 从父节点中心开始
   layout.forEach(node => {
